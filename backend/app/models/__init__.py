@@ -12,6 +12,14 @@ from app.models.academic import (
     TeacherCourseAllocation,
     StudentEnrollment,
 )
+from app.models.quiz import (
+    Assessment,
+    Question,
+    QuizSession,
+    StudentAnswer,
+    QuizStatus,
+    QuestionType,
+)
 
 __all__ = [
     "User",
@@ -27,4 +35,10 @@ __all__ = [
     "SemesterCourseMap",
     "TeacherCourseAllocation",
     "StudentEnrollment",
+    "Assessment",
+    "Question",
+    "QuizSession",
+    "StudentAnswer",
+    "QuizStatus",
+    "QuestionType",
 ]

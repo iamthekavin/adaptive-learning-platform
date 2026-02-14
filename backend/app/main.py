@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api.v1 import auth, admin, academic, student
+from app.api.v1 import auth, admin, academic, student, teacher
 
 app = FastAPI(
     title="Adaptive Learning Platform API",
@@ -22,6 +22,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin - User Management"])
 app.include_router(academic.router, prefix="/api/v1/admin", tags=["Admin - Academic Management"])
+app.include_router(teacher.router, prefix="/api/v1/teacher", tags=["Teacher"])
 app.include_router(student.router, prefix="/api/v1/student", tags=["Student"])
 
 
