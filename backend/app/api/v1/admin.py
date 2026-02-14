@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from app.core.database import get_db
@@ -47,18 +48,35 @@ def create_user(
 def list_users(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(10, ge=1, le=100, description="Items per page"),
+    role: Optional[str] = Query(None, description="Filter by role (ADMIN, TEACHER, STUDENT)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin)
 ):
     """
     List all users with pagination (admin only).
+    Optional role filter.
     """
+    # Build query
+    query = db.query(User)
+    
+    # Apply role filter if provided
+    if role:
+        from app.models.user import UserRole
+        try:
+            role_enum = UserRole[role.upper()]
+            query = query.filter(User.role == role_enum)
+        except KeyError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid role. Must be one of: ADMIN, TEACHER, STUDENT"
+            )
+    
     # Get total count
-    total = db.query(User).count()
+    total = query.count()
     
     # Get paginated users
     offset = (page - 1) * page_size
-    users = db.query(User).offset(offset).limit(page_size).all()
+    users = query.offset(offset).limit(page_size).all()
     
     return {
         "total": total,
