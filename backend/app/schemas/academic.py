@@ -1,6 +1,8 @@
-from pydantic import BaseModel
+from __future__ import annotations
+
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 
 # Regulation Schemas
@@ -20,8 +22,7 @@ class RegulationResponse(RegulationBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Program Schemas
@@ -41,8 +42,7 @@ class ProgramResponse(ProgramBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Batch Schemas
@@ -62,8 +62,7 @@ class BatchResponse(BatchBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Course Schemas
@@ -83,8 +82,7 @@ class CourseResponse(CourseBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # SemesterCourseMap Schemas
@@ -101,8 +99,7 @@ class SemesterCourseMapResponse(SemesterCourseMapBase):
     id: int
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Semester Schema (for student syllabus)
@@ -111,8 +108,7 @@ class SemesterResponse(BaseModel):
     name: str
     semester_number: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Student Syllabus Response
@@ -123,13 +119,12 @@ class CourseInSyllabus(BaseModel):
     credits: int
     description: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SemesterWithCourses(BaseModel):
     semester: SemesterResponse
-    courses: list[CourseInSyllabus]
+    courses: List[CourseInSyllabus]
 
 
 class StudentSyllabusResponse(BaseModel):
@@ -138,4 +133,9 @@ class StudentSyllabusResponse(BaseModel):
     batch_name: str
     program_name: str
     regulation_name: str
-    semesters: list[SemesterWithCourses]
+    semesters: List[SemesterWithCourses]
+
+
+# Rebuild models to resolve forward references
+SemesterWithCourses.model_rebuild()
+StudentSyllabusResponse.model_rebuild()

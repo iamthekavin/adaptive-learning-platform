@@ -1,6 +1,8 @@
-from pydantic import BaseModel, EmailStr
+from __future__ import annotations
+
+from pydantic import BaseModel, ConfigDict, EmailStr
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from app.models.user import UserRole
 
 
@@ -23,8 +25,7 @@ class UserResponse(UserBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class Token(BaseModel):
@@ -49,4 +50,8 @@ class PaginatedUsers(BaseModel):
     total: int
     page: int
     page_size: int
-    users: list[UserResponse]
+    users: List[UserResponse]
+
+
+# Rebuild model to resolve forward references
+PaginatedUsers.model_rebuild()

@@ -1,4 +1,6 @@
-from pydantic import BaseModel, Field
+from __future__ import annotations
+
+from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
 from typing import Optional, Dict, List
 from app.models.quiz import QuizStatus, QuestionType
@@ -25,12 +27,7 @@ class AssessmentResponse(AssessmentBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
-
-
-class AssessmentWithQuestions(AssessmentResponse):
-    questions: List['QuestionResponse']
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Question Schemas
@@ -53,8 +50,12 @@ class QuestionResponse(QuestionBase):
     assessment_id: int
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Assessment with questions (defined after QuestionResponse)
+class AssessmentWithQuestions(AssessmentResponse):
+    questions: List[QuestionResponse]
 
 
 class QuestionForStudent(BaseModel):
@@ -65,8 +66,7 @@ class QuestionForStudent(BaseModel):
     marks: float
     options: Dict[str, str]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Quiz Session Schemas
@@ -80,8 +80,7 @@ class QuizSessionResponse(BaseModel):
     score: Optional[float]
     max_score: Optional[float]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class QuizStartResponse(BaseModel):
@@ -140,5 +139,10 @@ class AvailableAssessment(BaseModel):
     teacher_name: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Rebuild models to resolve forward references
+AssessmentWithQuestions.model_rebuild()
+QuizStartResponse.model_rebuild()
+QuizResultResponse.model_rebuild()
