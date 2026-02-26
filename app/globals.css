@@ -1,26 +1,170 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
+@theme {
+  --font-sans: 'Outfit', sans-serif;
+  
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --background: #fafafa;
+  --foreground: #09090b;
+  --card: #ffffff;
+  --card-foreground: #09090b;
+  --primary: #18181b;
+  --primary-foreground: #fafafa;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
+  --destructive: #ef4444;
+  --destructive-foreground: #fafafa;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #18181b;
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: #09090b;
+  --foreground: #fafafa;
+  --card: #09090b;
+  --card-foreground: #fafafa;
+  --primary: #fafafa;
+  --primary-foreground: #18181b;
+  --secondary: #27272a;
+  --secondary-foreground: #fafafa;
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
+  --accent: #27272a;
+  --accent-foreground: #fafafa;
+  --destructive: #7f1d1d;
+  --destructive-foreground: #fafafa;
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: #d4d4d8;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    letter-spacing: -0.01em;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Premium Components */
+
+.premium-card {
+  @apply rounded-2xl border border-white/[0.04] bg-white/[0.01] backdrop-blur-3xl transition-all duration-500;
+}
+
+.premium-card:hover {
+  @apply border-white/[0.08] bg-white/[0.02] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)];
+}
+
+.minimal-input {
+  @apply h-12 w-full rounded border border-white/[0.04] bg-white/[0.02] px-4 text-xs font-bold uppercase tracking-widest text-white transition-all duration-300 placeholder:text-white/20 focus:border-white/20 focus:bg-white/[0.04] focus:outline-none;
+}
+
+.btn-premium {
+  @apply inline-flex h-12 items-center justify-center gap-2 rounded bg-white px-8 text-[10px] font-black uppercase tracking-widest text-black transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50;
+}
+
+/* Layout Utilities */
+
+.asymmetric-layout {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 4rem;
+  align-items: center;
+}
+
+@media (max-width: 1024px) {
+  .asymmetric-layout {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+}
+
+.bg-subtle-mesh {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: 
+    radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 100% 100%, rgba(168, 85, 247, 0.03) 0%, transparent 50%),
+    #09090b;
+}
+
+/* Animations */
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.reveal {
+  animation: reveal 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.reveal-stagger-1 { animation-delay: 0.1s; }
+.reveal-stagger-2 { animation-delay: 0.2s; }
+.reveal-stagger-3 { animation-delay: 0.3s; }
+
+/* Select / Option dark theme */
+select {
+  color-scheme: dark;
+}
+
+select option {
+  background-color: #09090b;
+  color: #fafafa;
+}
+
+select option:hover,
+select option:checked {
+  background-color: #27272a;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-white/10 rounded-full hover:bg-white/20;
 }

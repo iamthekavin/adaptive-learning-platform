@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1771690704688,
+      "tag": "0000_faulty_titania",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1771695060181,
+      "tag": "0001_module2_core_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1771771488722,
+      "tag": "0002_marvelous_songbird",
+      "breakpoints": true
+    }
+  ]
+}
