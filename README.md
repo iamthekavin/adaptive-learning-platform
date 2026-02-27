@@ -70,6 +70,27 @@ A powerful, secure quiz delivery system built for educators and students.
 - **Copy/Paste & Right-Click Prevention**: Active event listeners block right-clicks (`contextmenu`) and text copying, logging these attempts as infractions.
 - **Randomized Question Delivery**: Questions and their multiple-choice options are dynamically shuffled server-side before hitting the client, ensuring no two students see the exact same layout.
 
+### 4. Advanced Edge Case Handling (Quiz Resiliency)
+
+The quiz engine is highly fault-tolerant and gracefully handles complex, real-world edge cases through atomic database transactions and strict data integrity constraints:
+
+- **1. Network Disconnects & Mid-Quiz Logouts (Autosave)**:
+  - **Mechanic**: The frontend features an `isOffline` network detector. As students select answers, they are asynchronously pushed to a dedicated `/autosave` API.
+  - **Offline Syncing**: If the internet drops, answers are intelligently queued in memory. Once connectivity is restored, the queue flushes sequentially to the server.
+  - **Resume Capability**: If a student accidentally closes the browser or logs out, the `/start` API fetches the associated `in_progress` session _and_ their successfully autosaved choices, pre-filling the UI so they simply resume without losing progress.
+- **2. Duplicate Session Prevention**:
+  - **Mechanic**: A partial, composite unique constraint (`unq_in_progress_session`) at the PostgreSQL level specifically guards `(user_id, quiz_id) WHERE status = 'in_progress'`.
+  - **Benefit**: This acts as a hard lock. No amount of rapid double-clicking or network manipulation can ever trick the system into spawning two simultaneous attempts for the same user on a given quiz.
+- **3. Simultaneous Auto-Grading Safeguard**:
+  - **Mechanic**: The final `/submit` API performs an atomic boolean check when updating the database (`WHERE id = sessionId AND status = 'in_progress'`).
+  - **Benefit**: If a throttled network causes two duplicate submit requests to arrive at the server simultaneously, the first request flips the status to `submitted`. The trailing request fails the row-match instantly, completely eliminating double-grading bugs, duplicate score entries, or corrupting aggregate analytics.
+- **4. Mid-Decision Quiz Deletions**:
+  - **Mechanic**: If a teacher intentionally deletes a quiz while a cohort is currently testing, the student's background pings and final `Submit` POST request will safely capture the `404 Not Found` response.
+  - **Benefit**: Instead of crashing the frontend client or throwing uncaught React errors, the UI intercepts this 404 code and halts the timer, elegantly notifying the student: _"This quiz was deleted by the instructor. Your attempt has been canceled."_
+- **5. Semester & Timeline Advancements**:
+  - **Mechanic**: The core submission engine and `studentGuard` middleware strictly authenticate based on the cryptographically secure `session.id` established at the time the quiz began.
+  - **Benefit**: If an Administrator triggers a mass batch progression (moving students from Semester 3 to 4) exactly while a student is testing, the submission does not corrupt. The active quiz token retains its context and successfully records the grade on submission.
+
 ### 4. Adaptive Analytics Engine (Adaptive Engine)
 
 The platform features an intelligent engine (`lib/adaptive/analytics-engine.ts`) to track long-term student mastery across syllabus requirements.
@@ -216,6 +237,33 @@ To test the production optimized bundle locally:
 npm run build
 npm run start
 ```
+
+---
+
+## 🧪 Edge Case Verification Guide
+
+Administrators and developers can manually replicate and verify the fault tolerance of the application utilizing these testing schemas:
+
+### Autosave & Logout Recovery
+
+1. Start a quiz as a student.
+2. Click multiple answers and watch the network tab for background `/autosave` 200 OK responses.
+3. Completely close the browser tab or hit refresh.
+4. Restart the quiz. Ensure the timer strictly resumes based on the initial `started_at` postgres timestamp, and the previously clicked answers are loaded.
+
+### Network Drops (Offline Sync)
+
+1. Start a quiz.
+2. Under Chrome DevTools > Network tab, throttle speeds to **"Offline"**.
+3. Select 3 new answers. Observe the UI highlight the red `WifiOff` offline queueing warning.
+4. Return Network to **"No throttling"**.
+5. Observe the yellow `Syncing...` indicator flash quickly as the queue empties. Refresh the page safely knowing answers are preserved.
+
+### Database Lock / Simulate Simultaneous Submission
+
+1. Using Chrome DevTools, throttle the network to **"Slow 3G"**.
+2. Aggressively spam the "Submit Quiz" button rapidly 10+ times.
+3. Observe the network tab handling multiple queued POST requests, where ONLY the first returns a `200 Success` taking the grade, and all subsequent trailing requests instantly return explicit DB rejection errors preventing score duplication.
 
 ---
 
