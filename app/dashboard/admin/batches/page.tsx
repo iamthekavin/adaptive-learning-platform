@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import { Plus } from "lucide-react";
 import { DataTable } from "@/components/admin/data-table";
 import { ResourceForm } from "@/components/admin/resource-form";
@@ -24,11 +24,6 @@ interface Regulation {
   code: string;
 }
 
-const columns = [
-  { key: "startYear" as const, label: "Start Year" },
-  { key: "endYear" as const, label: "End Year" },
-];
-
 export default function BatchesPage() {
   const [data, setData] = useState<Batch[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
@@ -36,6 +31,16 @@ export default function BatchesPage() {
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Batch | null>(null);
+
+  const columns = useMemo(() => [
+    { key: "startYear" as const, label: "Start Year" },
+    { key: "endYear" as const, label: "End Year" },
+    { 
+      key: "programId" as const, 
+      label: "Program", 
+      render: (val: any) => programs.find(p => p.id === val)?.name || "—" 
+    },
+  ], [programs]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
