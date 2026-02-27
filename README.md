@@ -1,6 +1,6 @@
 # Adaptive Learning Platform (ALP)
 
-An enterprise-grade, highly scalable Learning Management System (LMS) and Adaptive Learning Platform designed to manage everything from top-level academic hierarchies (Universities) down to granular student interactions (Proctored Assessments).
+An enterprise-grade, highly scalable Learning Management System (LMS) and Adaptive Learning Platform designed to manage everything from top-level academic hierarchies (Universities) down to granular student interactions (Proctored Assessments and Adaptive Analytics).
 
 This platform aims to digitize the entire academic workflow: managing institutional structures, tracking teacher and student enrollments across semesters, delivering rigorous, anti-cheat enabled assessments, and providing insightful analytics for educators and administrators.
 
@@ -12,7 +12,7 @@ This platform aims to digitize the entire academic workflow: managing institutio
 
 - **Framework**: [Next.js 16 (App Router)](https://nextjs.org/) - Utilizing the latest React Server Components (RSC) and Server Actions for optimized performance and SEO.
 - **UI Library**: [React 19](https://react.dev/)
-- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) & `class-variance-authority` (CVA) - For a highly flexible, utility-first, modern UI design with Glassmorphism and dark mode standard.
+- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) & `class-variance-authority` (CVA) - For a highly flexible, utility-first, modern UI design featuring Glassmorphism and dark mode as the default aesthetic.
 - **Components**: Radix UI primitives and Lucide React (for crisp, consistent iconography).
 - **Forms & Validation**: `react-hook-form` coupled tightly with `zod` for strict, type-safe client and server payload validation.
 - **Notifications**: `sonner` for beautiful, responsive toast notifications.
@@ -45,12 +45,12 @@ The platform is built to handle complex, real-world educational structures. Admi
 
 ### 2. User Roles & Allocation Mapping
 
-- **Administrators (`admin`)**: Manage the entire academic hierarchy.
+- **Administrators (`admin`)**: Manage the entire academic hierarchy via dedicated dashboard panels.
 - **Teachers (`teacher`)**:
   - Admins allocate teachers to specific `Semester Course Maps` (e.g., "Data Structures" in "Semester 3").
   - Teachers get automatic access to the cohorts of students enrolled in that specific combination.
 - **Students (`student`)**:
-  - Admins enroll students into specific `Batches`.
+  - **Onboarding Flow**: Upon first login, students must complete an onboarding flow to map themselves to a specific Program, Batch, and Roll Number, placing them in their correct academic context.
   - Students progress automatically through courses mapped to their current semester.
 
 ### 3. Assessment & Proctored Quiz Engine
@@ -59,8 +59,8 @@ A powerful, secure quiz delivery system built for educators and students.
 
 #### Teacher Capabilities:
 
-- **Quiz Creation**: Define titles, descriptions, allowed duration (e.g., 30 mins), and max attempts. Maintain quizzes in "draft" or "published" states.
-- **Question Bank**: Build MCQs mapped to specific Course Outcomes (COs). Assign difficulty levels (easy, medium, hard) and dynamic max marks.
+- **Quiz Creation**: Define titles, descriptions, allowed duration, and max attempts. Maintain quizzes in "draft" or "published" states.
+- **Question Bank**: Build MCQs mapped to specific Course Outcomes (COs). Assign difficulty levels (easy, medium, hard) and dynamic max marks. Questions and options can be edited dynamically before quiz publishing.
 - **Live Analytics**: View real-time aggregated stats of student performance, pass/fail ratios, and average scores per quiz.
 
 #### Student Experience (Anti-Cheat / Proctoring):
@@ -68,18 +68,26 @@ A powerful, secure quiz delivery system built for educators and students.
 - **Server-Synchronized Timers**: The countdown timer relies entirely on Postgres `CURRENT_TIMESTAMP - started_at` calculations. This makes it **impossible** for a student to tamper with the duration by altering their local machine clock or timezone settings.
 - **Tab-Switch Detection**: Monitors document `visibilitychange`. If a student switches tabs or minimizes the browser, a `proctor_event` is logged directly to their active `quiz_session`, incrementing their **Risk Score**.
 - **Copy/Paste & Right-Click Prevention**: Active event listeners block right-clicks (`contextmenu`) and text copying, logging these attempts as infractions.
-- **Randomized Question Delivery**: Questions and their multiple-choice options are dynamically shuffled server-side (`Array.sort(Math.random)`) before hitting the client, ensuring no two students see the exact same layout.
+- **Randomized Question Delivery**: Questions and their multiple-choice options are dynamically shuffled server-side before hitting the client, ensuring no two students see the exact same layout.
 
-### 4. Advanced Analytics & Risk Algorithms
+### 4. Adaptive Analytics Engine (Adaptive Engine)
 
-- **Risk Score (0-100)**: Every student attempt generates a dynamic Risk Score based on proctoring infractions (e.g., tab switches = +15 points).
-- **Aggregated Dashboards**: Teachers view interactive charts detailing Course Outcome performance, helping identify exactly which syllabus topics the cohort is weak in, facilitating adaptive teaching.
+The platform features an intelligent engine (`lib/adaptive/analytics-engine.ts`) to track long-term student mastery across syllabus requirements.
+
+- **Course Outcome (CO) Mastery Tracking**: Every time a student answers a question, the engine recalibrates their mastery percentage for the associated CO. Based on standard grading curves, it categorizes mastery as:
+  - `< 40%`: Weak
+  - `40 - 69%`: Developing
+  - `70 - 89%`: Proficient
+  - `>= 90%`: Mastered
+- **Student Insights**: Students receive personalized dashboards highlighting their weak COs and offering tailored recommendations (e.g., "Focus on CO2: Binary Trees").
+- **Teacher Analytics**: Educators can view a cohort-wide matrix breaking down how many students are "Weak" vs "Mastered" for specific Course Outcomes, enabling data-driven reteaching.
+- **At-Risk Identification**: Students averaging below 40% mastery across a course are flagged automatically for early intervention.
 
 ---
 
 ## 🗄️ Database Schema Details (Drizzle ERD)
 
-The database is split across three primary files for maintainability (`lib/db/schema/`):
+The database is split across four primary files for modular maintainability (`lib/db/schema/`):
 
 ### `auth.ts` (Better Auth integration)
 
@@ -102,6 +110,10 @@ The database is split across three primary files for maintainability (`lib/db/sc
   - `student_answer`: Granular tracking of what a student answered, cross-referenced with `option.isCorrect` and `time_taken_seconds` per question.
   - `proctor_event`: A log table tracking the exact timestamp and `event_type` (e.g., 'tab_switch') of infractions.
 
+### `adaptive.ts` (Analytics)
+
+- `co_mastery`: Aggregates and materializes a student's calculated proficiency on specific Course Outcomes over time, minimizing heavy runtime queries.
+
 ---
 
 ## 📂 Internal Directory Structure
@@ -110,6 +122,7 @@ The database is split across three primary files for maintainability (`lib/db/sc
 adaptive-learning-platform/
 ├── app/
 │   ├── (auth)/             # Login/Signup pages & logic
+│   ├── onboarding/         # Mandatory first-time user setup for students
 │   ├── api/                # Next.js Route Handlers
 │   │   ├── admin/          # Strictly protected admin endpoints
 │   │   ├── auth/[...all]/  # BetterAuth catch-all routes
@@ -117,7 +130,7 @@ adaptive-learning-platform/
 │   │   └── teacher/        # Course management, quiz CRUDS, analytics APIs
 │   └── dashboard/          # Next.js Pages (UI)
 │       ├── admin/          # Admin UI (Hierarchy CRUD tables, user allocation)
-│       ├── student/        # Student UI (My Courses, Quiz Taking Engine, Results)
+│       ├── student/        # Student UI (My Courses, Quiz Taking Engine, Results, Insights)
 │       └── teacher/        # Teacher UI (Quiz Builder, Analytics Dashboards)
 ├── components/             # Reusable UI React Components
 │   ├── ui/                 # Base elements (Buttons, Inputs, Modals, Cards)
@@ -125,6 +138,7 @@ adaptive-learning-platform/
 ├── lib/
 │   ├── admin/              # Zod schemas used to validate incoming admin API POST/PUT data
 │   ├── db/                 # Drizzle schemas, config, and db connection instance
+│   ├── adaptive/           # The Analytics Engine for processing Mastery/Risk points
 │   ├── student/            # Student API utilities and the `studentGuard()` auth middleware
 │   └── teacher/            # Teacher API utilities and the `teacherGuard()` auth middleware
 └── package.json            # Scripts & project dependencies
@@ -139,7 +153,7 @@ adaptive-learning-platform/
 2. **Data Isolation (Tenant Scoping)**:
    In the REST endpoints, queries unconditionally map `userId` context. E.g., a teacher requesting quizzes (`SELECT * FROM quiz`) implicitly passes `WHERE createdBy = session.user.id`. A user can never access objects belonging to another tenant/user.
 3. **Optimized Zod Validations**:
-   All updates use `z.object().partial()` with disabled explicit defaults to ensure explicit `PATCH/PUT` endpoints don't accidentally overwrite existing DB data with fallback defaults.
+   All programmatic updates utilize `z.object().partial()` without blindly applying default values. This ensures `PATCH/PUT` endpoints modifying status flags (like Publishing a quiz) do not accidentally revert existing parameters back to factory defaults.
 
 ---
 

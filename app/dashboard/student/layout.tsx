@@ -2,6 +2,9 @@ import { auth } from "@/lib/auth/server";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { db } from "@/lib/db";
+import { studentEnrollment } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
 const navItems = [
   { label: "Overview", href: "/dashboard/student" },
@@ -24,6 +27,19 @@ export default async function StudentLayout({
 
   const role = (session.user as { role?: string }).role;
   if (role !== "student" && role !== "admin") redirect("/dashboard");
+
+  if (role === "student") {
+    // Check if the student has mapped their semester/batch
+    const [enrollment] = await db
+      .select()
+      .from(studentEnrollment)
+      .where(eq(studentEnrollment.userId, session.user.id))
+      .limit(1);
+
+    if (!enrollment) {
+      redirect("/onboarding");
+    }
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-6 pt-28 pb-20 lg:px-12">
