@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { quiz, question, option, quizSession } from "@/lib/db/schema/assessment";
+import { quiz, question, option, quizSession, studentAnswer } from "@/lib/db/schema/assessment";
 import { studentGuard } from "@/lib/student/auth-guard";
 import { eq, and } from "drizzle-orm";
 import { sql } from "drizzle-orm";
@@ -54,11 +54,28 @@ export async function POST(
     } else {
       // Return existing in-progress session
       const questions = await getQuestionsWithoutAnswers(quizId);
+      
+      const saved = await db
+        .select({
+          questionId: studentAnswer.questionId,
+          selectedOptionId: studentAnswer.selectedOptionId,
+        })
+        .from(studentAnswer)
+        .where(eq(studentAnswer.sessionId, inProgress.session.id));
+
+      const savedAnswersMap = saved.reduce((acc, curr) => {
+        if (curr.selectedOptionId) {
+          acc[curr.questionId] = curr.selectedOptionId;
+        }
+        return acc;
+      }, {} as Record<string, string>);
+
       return NextResponse.json({
         session: inProgress.session,
-        questions,
-        quiz: { title: q.title, durationMinutes: q.durationMinutes, totalMarks: q.totalMarks },
+        questions: q.isAdaptive ? [] : questions,
+        quiz: { title: q.title, durationMinutes: q.durationMinutes, totalMarks: q.totalMarks, isAdaptive: q.isAdaptive },
         elapsedSeconds: inProgress.elapsedSeconds,
+        savedAnswers: savedAnswersMap,
       });
     }
   }
@@ -80,8 +97,8 @@ export async function POST(
 
   return NextResponse.json({
     session: newSession,
-    questions,
-    quiz: { title: q.title, durationMinutes: q.durationMinutes, totalMarks: q.totalMarks },
+    questions: q.isAdaptive ? [] : questions,
+    quiz: { title: q.title, durationMinutes: q.durationMinutes, totalMarks: q.totalMarks, isAdaptive: q.isAdaptive },
     elapsedSeconds: 0,
   }, { status: 201 });
 }

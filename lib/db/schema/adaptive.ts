@@ -21,6 +21,7 @@ export const coMastery = pgTable("co_mastery", {
   totalQuestions: integer("total_questions").notNull().default(0),
   correctAnswers: integer("correct_answers").notNull().default(0),
   masteryPct: real("mastery_pct").notNull().default(0), // 0–100
+  eloRating: integer("elo_rating").notNull().default(1200),
   level: text("level").notNull().default("weak"), // weak, developing, proficient, mastered
   lastUpdated: timestamp("last_updated").notNull().defaultNow(),
   createdAt: timestamp("created_at").notNull().defaultNow(),

@@ -45,6 +45,7 @@ export default function StudentInsightsPage() {
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [insightsLoading, setInsightsLoading] = useState(false);
+  const [generatingQuiz, setGeneratingQuiz] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -65,6 +66,26 @@ export default function StudentInsightsPage() {
     if (res.ok) setInsights(await res.json());
     setInsightsLoading(false);
   }, []);
+
+  const handleGeneratePractice = async () => {
+    if (!selectedCourse) return;
+    setGeneratingQuiz(true);
+    try {
+      const res = await fetch("/api/student/reinforcement/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ courseId: selectedCourse })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      
+      // Navigate to the quiz taking page for this adaptive session
+      window.location.href = `/dashboard/student/quizzes/${data.quizId}?sessionId=${data.sessionId}`;
+    } catch (err: any) {
+      alert(err.message || "Failed to generate practice quiz");
+      setGeneratingQuiz(false);
+    }
+  };
 
   useEffect(() => {
     if (selectedCourse) fetchInsights(selectedCourse);
@@ -186,9 +207,19 @@ export default function StudentInsightsPage() {
           {/* Recommendations */}
           {insights.recommendations.length > 0 && (
             <div>
-              <h3 className="mb-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-white/20">
-                <AlertTriangle className="h-3 w-3 text-yellow-400" /> Study Recommendations
-              </h3>
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-white/20">
+                  <AlertTriangle className="h-3 w-3 text-yellow-400" /> Study Recommendations
+                </h3>
+                <button
+                  onClick={handleGeneratePractice}
+                  disabled={generatingQuiz}
+                  className="rounded-lg bg-emerald-500/10 px-4 py-2 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50 flex items-center gap-2 transition-colors border border-emerald-500/20"
+                >
+                  {generatingQuiz && <Loader2 className="h-3 w-3 animate-spin" />}
+                  Generate Targeted Practice
+                </button>
+              </div>
               <div className="space-y-2">
                 {insights.recommendations.map((r, i) => (
                   <div key={i} className="flex items-center gap-3 rounded-lg border border-yellow-500/10 bg-yellow-500/[0.03] px-4 py-3">

@@ -4,7 +4,10 @@ import {
   timestamp,
   integer,
   boolean,
+  uniqueIndex,
+  unique,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
 import { course, courseOutcome } from "./course";
 import { user } from "./auth";
@@ -22,6 +25,7 @@ export const quiz = pgTable("quiz", {
     .references(() => user.id, { onDelete: "cascade" }),
   durationMinutes: integer("duration_minutes").notNull().default(30),
   maxAttempts: integer("max_attempts").notNull().default(1),
+  isAdaptive: boolean("is_adaptive").notNull().default(false),
   status: text("status").notNull().default("draft"), // draft, published
   totalMarks: integer("total_marks").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -39,6 +43,7 @@ export const question = pgTable("question", {
     .references(() => courseOutcome.id, { onDelete: "set null" }),
   marks: integer("marks").notNull().default(1),
   difficulty: text("difficulty").notNull().default("medium"), // easy, medium, hard
+  eloRating: integer("elo_rating").notNull().default(1200),
   orderIndex: integer("order_index").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -73,7 +78,11 @@ export const quizSession = pgTable("quiz_session", {
   riskScore: integer("risk_score").notNull().default(0), // 0–100
   flagged: boolean("flagged").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  unqInProgress: uniqueIndex("unq_in_progress_session")
+    .on(table.userId, table.quizId)
+    .where(sql`${table.status} = 'in_progress'`),
+}));
 
 
 // ─── Student Answer ─────────────────────────────────────────
@@ -90,4 +99,6 @@ export const studentAnswer = pgTable("student_answer", {
   isCorrect: boolean("is_correct"),
   timeTakenSeconds: integer("time_taken_seconds"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  unqSessionQuestion: unique("unq_session_question").on(table.sessionId, table.questionId),
+}));

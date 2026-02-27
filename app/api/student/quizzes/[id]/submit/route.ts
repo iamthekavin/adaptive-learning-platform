@@ -4,7 +4,8 @@ import { quiz, question, option, quizSession, studentAnswer } from "@/lib/db/sch
 import { studentGuard } from "@/lib/student/auth-guard";
 import { computeCOMastery } from "@/lib/adaptive/analytics-engine";
 import { computeRiskScore } from "@/lib/adaptive/risk-engine";
-import { eq, and } from "drizzle-orm";
+import { updateElos } from "@/lib/adaptive/elo-engine";
+import { eq, and, sql } from "drizzle-orm";
 import { z } from "zod";
 
 const submitSchema = z.object({
@@ -88,7 +89,17 @@ export async function POST(
   });
 
   if (answerRecords.length > 0) {
-    await db.insert(studentAnswer).values(answerRecords);
+    await db
+      .insert(studentAnswer)
+      .values(answerRecords)
+      .onConflictDoUpdate({
+        target: [studentAnswer.sessionId, studentAnswer.questionId],
+        set: {
+          selectedOptionId: sql`EXCLUDED.selected_option_id`,
+          isCorrect: sql`EXCLUDED.is_correct`,
+          timeTakenSeconds: sql`EXCLUDED.time_taken_seconds`,
+        },
+      });
   }
 
   // Update session
@@ -99,8 +110,12 @@ export async function POST(
       score: totalScore,
       submittedAt: new Date(),
     })
-    .where(eq(quizSession.id, sessionId))
+    .where(and(eq(quizSession.id, sessionId), eq(quizSession.status, "in_progress")))
     .returning();
+
+  if (!updatedSession) {
+    return NextResponse.json({ error: "Already submitted" }, { status: 400 });
+  }
 
   // Recompute CO mastery and risk score after submission
   const [quizData] = await db.select().from(quiz).where(eq(quiz.id, quizId));
@@ -108,6 +123,14 @@ export async function POST(
     computeCOMastery(userId, quizData.courseId).catch(() => {});
   }
   computeRiskScore(sessionId).catch(() => {});
+
+  // Update Elo Ratings explicitly
+  for (const record of answerRecords) {
+    const q = questions.find((q) => q.id === record.questionId);
+    if (q && q.courseOutcomeId) {
+       await updateElos(userId, q.courseOutcomeId, q.id, record.isCorrect);
+    }
+  }
 
   return NextResponse.json({
     score: totalScore,

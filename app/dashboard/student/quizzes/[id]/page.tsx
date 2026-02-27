@@ -3,12 +3,12 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Loader2, Clock, CheckCircle, AlertCircle, Shield } from "lucide-react";
+import { ArrowLeft, Loader2, Clock, CheckCircle, AlertCircle, Shield, WifiOff, RefreshCcw } from "lucide-react";
 
 interface QuizOption { id: string; text: string; orderIndex: number; }
-interface QuizQuestion { id: string; text: string; marks: number; difficulty: string; orderIndex: number; options: QuizOption[]; }
+interface QuizQuestion { id: string; text: string; marks: number; difficulty: string; orderIndex?: number; options: QuizOption[]; }
 interface QuizSession { id: string; startedAt: string; status: string; }
-interface QuizInfo { title: string; durationMinutes: number; totalMarks: number; }
+interface QuizInfo { title: string; durationMinutes: number; totalMarks: number; isAdaptive: boolean; }
 
 export default function QuizTakingPage() {
   const params = useParams<{ id: string }>();
@@ -22,8 +22,15 @@ export default function QuizTakingPage() {
   const [error, setError] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(0); // seconds remaining
   const [tabSwitches, setTabSwitches] = useState(0);
+  const [isOffline, setIsOffline] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [adaptiveLoadingNext, setAdaptiveLoadingNext] = useState(false);
+  const [currentAdaptiveQuestion, setCurrentAdaptiveQuestion] = useState<QuizQuestion | null>(null);
+  const [adaptiveIndex, setAdaptiveIndex] = useState(0);
+
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const autoSubmittedRef = useRef(false);
+  const autosaveQueueRef = useRef<{ questionId: string; selectedOptionId: string; timeTakenSeconds?: number }[]>([]);
 
   // Track per-question start times
   const questionStartRef = useRef<Record<string, number>>({});
@@ -61,14 +68,50 @@ export default function QuizTakingPage() {
       const remaining = Math.max(0, Math.floor(totalDurationSec - data.elapsedSeconds));
       setTimeLeft(remaining);
 
-      // Initialize question start times
-      if (data.questions.length > 0) {
+      if (data.savedAnswers) {
+        setAnswers(data.savedAnswers);
+      }
+
+      if (data.quiz.isAdaptive) {
+        await loadNextAdaptiveQuestion(data.session.id);
+      } else if (data.questions.length > 0) {
         questionStartRef.current[data.questions[0].id] = Date.now();
       }
 
       setLoading(false);
     })();
   }, [params.id]);
+
+  const loadNextAdaptiveQuestion = async (sessionId: string) => {
+    setAdaptiveLoadingNext(true);
+    try {
+      const res = await fetch(`/api/student/quiz-sessions/${sessionId}/next-question`);
+      const data = await res.json();
+      if (data.question) {
+        setCurrentAdaptiveQuestion(data.question);
+        setQuestions((prev) => [...prev, data.question]); // keep track of history
+        questionStartRef.current[data.question.id] = Date.now();
+      } else {
+        // No more questions
+        setCurrentAdaptiveQuestion(null);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    setAdaptiveLoadingNext(false);
+  };
+
+  const handleNextAdaptive = async () => {
+      // Must answer current question first
+      if (currentAdaptiveQuestion && !answers[currentAdaptiveQuestion.id]) {
+          alert("Please answer the current question before moving on.");
+          return;
+      }
+      setAdaptiveIndex((prev) => prev + 1);
+      if (session) {
+         await loadNextAdaptiveQuestion(session.id);
+      }
+  };
 
   // Countdown timer
   useEffect(() => {
@@ -107,6 +150,11 @@ export default function QuizTakingPage() {
       });
 
       if (!res.ok) {
+        if (res.status === 404) {
+          setError("This quiz was deleted by the instructor. Your attempt has been canceled.");
+          return;
+        }
+
         const err = await res.json();
         alert(err.error || "Submission failed");
         return;
@@ -160,6 +208,49 @@ export default function QuizTakingPage() {
     };
   }, [session, result, logProctorEvent]);
 
+  // Offline detection and Autosave Flush
+  const flushAutosaveQueue = useCallback(async () => {
+    if (!session || isOffline || autosaveQueueRef.current.length === 0 || syncing) return;
+    setSyncing(true);
+    
+    // Process queue sequentially
+    const queue = [...autosaveQueueRef.current];
+    for (const item of queue) {
+      try {
+        await fetch(`/api/student/quiz-sessions/${session.id}/autosave`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(item),
+        });
+        // Remove from queue upon success
+        autosaveQueueRef.current = autosaveQueueRef.current.filter(q => q.questionId !== item.questionId);
+      } catch {
+        // Failed -> stop processing queue and break
+        break;
+      }
+    }
+    setSyncing(false);
+  }, [session, isOffline, syncing]);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOffline(false);
+      flushAutosaveQueue();
+    };
+    const handleOffline = () => setIsOffline(true);
+    
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    if (typeof navigator !== "undefined") {
+      setIsOffline(!navigator.onLine);
+    }
+    
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, [flushAutosaveQueue]);
+
   const selectAnswer = (questionId: string, optionId: string) => {
     // Track time spent
     if (questionStartRef.current[questionId]) {
@@ -167,7 +258,21 @@ export default function QuizTakingPage() {
       timeSpentRef.current[questionId] = (timeSpentRef.current[questionId] || 0) + elapsed;
     }
     questionStartRef.current[questionId] = Date.now();
-    setAnswers({ ...answers, [questionId]: optionId });
+    setAnswers((prev) => ({ ...prev, [questionId]: optionId }));
+
+    if (session) {
+      const payload = {
+        questionId,
+        selectedOptionId: optionId,
+        timeTakenSeconds: timeSpentRef.current[questionId] ? Math.round(timeSpentRef.current[questionId] / 1000) : undefined,
+      };
+      
+      const existingIdx = autosaveQueueRef.current.findIndex(q => q.questionId === questionId);
+      if (existingIdx > -1) autosaveQueueRef.current[existingIdx] = payload;
+      else autosaveQueueRef.current.push(payload);
+      
+      if (!isOffline) flushAutosaveQueue();
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -264,6 +369,24 @@ export default function QuizTakingPage() {
         </div>
       </div>
 
+      {/* Network States Handling */}
+      {isOffline && (
+        <div className="mb-6 rounded-lg border border-red-500/20 bg-red-500/[0.05] px-4 py-3 flex items-center gap-2">
+          <WifiOff className="h-4 w-4 text-red-400 shrink-0" />
+          <p className="text-xs font-bold text-red-400">
+            You are currently offline. Answers will be saved locally and synced when connection is restored.
+          </p>
+        </div>
+      )}
+      {!isOffline && autosaveQueueRef.current.length > 0 && (
+        <div className="mb-6 rounded-lg border border-yellow-500/20 bg-yellow-500/[0.05] px-4 py-3 flex items-center gap-2">
+          <RefreshCcw className="h-4 w-4 text-yellow-400 shrink-0 animate-spin" />
+          <p className="text-xs font-bold text-yellow-400">
+            Syncing answers to server...
+          </p>
+        </div>
+      )}
+
       {/* Tab switch warning */}
       {tabSwitches > 0 && (
         <div className="mb-6 rounded-lg border border-red-500/20 bg-red-500/[0.05] px-4 py-3 flex items-center gap-2">
@@ -279,49 +402,109 @@ export default function QuizTakingPage() {
         <div className="flex items-center justify-between mb-2">
           <span className="text-[10px] font-bold uppercase tracking-widest text-white/20">Progress</span>
           <span className="text-[10px] font-bold uppercase tracking-widest text-white/30">
-            {Object.keys(answers).length} / {questions.length} answered
+            {Object.keys(answers).length} {quizInfo?.isAdaptive ? "" : `/ ${questions.length}`} answered
           </span>
         </div>
-        <div className="h-1 rounded-full bg-white/[0.04]">
-          <div
-            className="h-1 rounded-full bg-indigo-500 transition-all"
-            style={{ width: `${(Object.keys(answers).length / Math.max(questions.length, 1)) * 100}%` }}
-          />
-        </div>
+        {!quizInfo?.isAdaptive && (
+          <div className="h-1 rounded-full bg-white/[0.04]">
+            <div
+              className="h-1 rounded-full bg-indigo-500 transition-all"
+              style={{ width: `${(Object.keys(answers).length / Math.max(questions.length, 1)) * 100}%` }}
+            />
+          </div>
+        )}
       </div>
 
       {/* Questions */}
       <div className="space-y-6">
-        {questions.map((q, i) => (
-          <div key={q.id} className="rounded-xl border border-white/[0.04] bg-white/[0.01] p-6">
-            <div className="flex items-start gap-3 mb-4">
-              <span className="text-xs font-black text-white/20 mt-0.5">Q{i + 1}</span>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-white leading-relaxed">{q.text}</p>
-                <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest mt-1">{q.marks} marks · {q.difficulty}</p>
+        {quizInfo?.isAdaptive ? (
+          /* Adaptive Mode: Show one question */
+          currentAdaptiveQuestion ? (
+            <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/[0.02] p-6 shadow-[0_0_15px_rgba(99,102,241,0.05)]">
+              <div className="flex items-center justify-between mb-4">
+                  <span className="text-xs font-black text-indigo-400 mt-0.5 animate-pulse flex items-center gap-2">
+                    <RefreshCcw className="h-3 w-3" /> Adaptive Match Active
+                  </span>
+              </div>
+              <div className="flex items-start gap-3 mb-4">
+                <span className="text-xs font-black text-white/20 mt-0.5">Q{adaptiveIndex + 1}</span>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-white leading-relaxed">{currentAdaptiveQuestion.text}</p>
+                </div>
+              </div>
+              <div className="ml-7 space-y-2 mb-6">
+                {currentAdaptiveQuestion.options.map((o) => (
+                  <button
+                    key={o.id}
+                    onClick={() => selectAnswer(currentAdaptiveQuestion.id, o.id)}
+                    className={`w-full text-left rounded-lg px-4 py-3 text-sm font-medium transition-all border ${
+                      answers[currentAdaptiveQuestion.id] === o.id
+                        ? "border-indigo-500/50 bg-indigo-500/10 text-indigo-400"
+                        : "border-white/[0.04] text-white/50 hover:border-white/[0.08] hover:bg-white/[0.02]"
+                    }`}
+                  >
+                    {o.text}
+                  </button>
+                ))}
+              </div>
+              <div className="ml-7 flex justify-end pt-4 border-t border-white/[0.04]">
+                 <button
+                   onClick={handleNextAdaptive}
+                   disabled={adaptiveLoadingNext || !answers[currentAdaptiveQuestion.id]}
+                   className="rounded bg-indigo-500/10 px-4 py-2 text-xs font-bold text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 disabled:opacity-50 flex items-center gap-2"
+                 >
+                   {adaptiveLoadingNext && <Loader2 className="h-3 w-3 animate-spin"/>}
+                   Next Question
+                 </button>
               </div>
             </div>
-            <div className="ml-7 space-y-2">
-              {q.options.map((o) => (
-                <button
-                  key={o.id}
-                  onClick={() => selectAnswer(q.id, o.id)}
-                  className={`w-full text-left rounded-lg px-4 py-3 text-sm font-medium transition-all border ${
-                    answers[q.id] === o.id
-                      ? "border-indigo-500/50 bg-indigo-500/10 text-indigo-400"
-                      : "border-white/[0.04] text-white/50 hover:border-white/[0.08] hover:bg-white/[0.02]"
-                  }`}
-                >
-                  {o.text}
-                </button>
-              ))}
+          ) : (
+            <div className="flex flex-col items-center justify-center p-12 border border-dashed border-white/[0.06] rounded-xl text-center">
+              <CheckCircle className="h-8 w-8 text-emerald-400 mb-3" />
+              <p className="text-sm font-bold text-white mb-2">You have completed the adaptive question pool!</p>
+              <p className="text-xs text-white/40 mb-6">Submit your quiz to see the final results and updated mastery scores.</p>
+              <button
+                onClick={() => doSubmit(false)}
+                disabled={submitting || Object.keys(answers).length === 0}
+                className="btn-premium !h-10 !px-6 !text-[10px] disabled:opacity-30"
+              >
+                {submitting ? "Submitting..." : "Submit Quiz"}
+              </button>
             </div>
-          </div>
-        ))}
+          )
+        ) : (
+          /* Standard Mode: Show all questions */
+          questions.map((q, i) => (
+            <div key={q.id} className="rounded-xl border border-white/[0.04] bg-white/[0.01] p-6">
+              <div className="flex items-start gap-3 mb-4">
+                <span className="text-xs font-black text-white/20 mt-0.5">Q{i + 1}</span>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-white leading-relaxed">{q.text}</p>
+                  <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest mt-1">{q.marks} marks · {q.difficulty}</p>
+                </div>
+              </div>
+              <div className="ml-7 space-y-2">
+                {q.options.map((o) => (
+                  <button
+                    key={o.id}
+                    onClick={() => selectAnswer(q.id, o.id)}
+                    className={`w-full text-left rounded-lg px-4 py-3 text-sm font-medium transition-all border ${
+                      answers[q.id] === o.id
+                        ? "border-indigo-500/50 bg-indigo-500/10 text-indigo-400"
+                        : "border-white/[0.04] text-white/50 hover:border-white/[0.08] hover:bg-white/[0.02]"
+                    }`}
+                  >
+                    {o.text}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
-      {/* Bottom Submit */}
-      {questions.length > 3 && (
+      {/* Bottom Submit for Standard Quiz */}
+      {(!quizInfo?.isAdaptive && questions.length > 3) && (
         <div className="mt-8 flex justify-end">
           <button
             onClick={() => doSubmit(false)}
