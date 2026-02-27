@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# playwright
+clear-db.ts
+db-test-out.txt
+test-out.txt
+test-results/
+tests-results.json
