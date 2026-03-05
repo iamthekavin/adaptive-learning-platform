@@ -41,8 +41,22 @@ yarn-error.log*
 next-env.d.ts
 
 # playwright
-clear-db.ts
-db-test-out.txt
-test-out.txt
 test-results/
-tests-results.json
+
+# temp debug scripts & output files
+*.output.txt
+db-output.*
+db-test-out.*
+test-out.*
+error-out.*
+eslint_results.*
+tests-results.*
+lint.txt
+reply.txt
+clear-db.ts
+insert-dummy.ts
+inspect-db.ts
+simulate-quiz.ts
+test-insights.ts
+seed-cos.ts
+check-cos.ts
