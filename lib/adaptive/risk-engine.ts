@@ -5,7 +5,7 @@ import { eq, and } from "drizzle-orm";
 
 /**
  * Compute risk score from proctoring events and answer patterns.
- * Returns 0–100 score. Flagged if ≥ 50.
+ * Returns 0–100 score. Flagged if ≥ 25.
  */
 export async function computeRiskScore(sessionId: string): Promise<{ riskScore: number; flagged: boolean }> {
   // Get proctor events
@@ -37,7 +37,7 @@ export async function computeRiskScore(sessionId: string): Promise<{ riskScore: 
 
   // Cap at 100
   riskScore = Math.min(riskScore, 100);
-  const flagged = riskScore >= 50;
+  const flagged = riskScore >= 25;
 
   // Update session
   await db

@@ -1,0 +1,6 @@
+{
+  "success": false,
+  "message": "Failed query: select \"id\", \"code\", \"description\", \"course_id\", \"created_at\", \"updated_at\" from \"course_outcome\" where \"course_outcome\".\"course_id\" = $1\nparams: cm7o23qce000fwwx1xdd1mff2",
+  "cause": "Cannot read properties of undefined (reading 'query')",
+  "stack": "Error: Failed query: select \"id\", \"code\", \"description\", \"course_id\", \"created_at\", \"updated_at\" from \"course_outcome\" where \"course_outcome\".\"course_id\" = $1\nparams: cm7o23qce000fwwx1xdd1mff2\n    at NodePgPreparedQuery.queryWithCache (D:\\adaptive-learning-platform\\node_modules\\src\\pg-core\\session.ts:73:11)\n    at async <anonymous> (D:\\adaptive-learning-platform\\node_modules\\src\\node-postgres\\session.ts:154:19)"
+}

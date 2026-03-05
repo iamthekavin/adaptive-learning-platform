@@ -120,15 +120,15 @@ export async function POST(
   // Recompute CO mastery and risk score after submission
   const [quizData] = await db.select().from(quiz).where(eq(quiz.id, quizId));
   if (quizData) {
-    computeCOMastery(userId, quizData.courseId).catch(() => {});
+    await computeCOMastery(userId, quizData.courseId).catch((err) => console.error("Error computing mastery:", err));
   }
-  computeRiskScore(sessionId).catch(() => {});
+  await computeRiskScore(sessionId).catch((err) => console.error("Error computing risk score:", err));
 
   // Update Elo Ratings explicitly
   for (const record of answerRecords) {
     const q = questions.find((q) => q.id === record.questionId);
     if (q && q.courseOutcomeId) {
-       await updateElos(userId, q.courseOutcomeId, q.id, record.isCorrect);
+       await updateElos(userId, q.courseOutcomeId, q.id, record.isCorrect).catch((err) => console.error("Error updating Elos:", err));
     }
   }
 
