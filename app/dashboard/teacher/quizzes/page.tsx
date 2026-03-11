@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Plus, Loader2, FileText, ArrowRight, Eye, EyeOff } from "lucide-react";
 
 interface Quiz {
@@ -24,12 +25,15 @@ interface CourseAllocation {
 }
 
 export default function TeacherQuizzesPage() {
+  const router = useRouter();
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [courses, setCourses] = useState<CourseAllocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", courseId: "", durationMinutes: 30, maxAttempts: 1 });
+
+
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -65,6 +69,8 @@ export default function TeacherQuizzesPage() {
     }
   };
 
+
+
   const toggleStatus = async (q: Quiz) => {
     const newStatus = q.status === "draft" ? "published" : "draft";
     await fetch(`/api/teacher/quizzes/${q.id}`, {
@@ -98,11 +104,15 @@ export default function TeacherQuizzesPage() {
     <div>
       <div className="mb-8 flex items-center justify-between">
         <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-white/20">Quizzes</h2>
-        <button onClick={() => setFormOpen(true)} className="btn-premium !h-9 !px-4 !text-[9px]">
-          <Plus className="h-3 w-3" />
-          Create Quiz
-        </button>
+        <div className="flex items-center gap-2">
+
+          <button onClick={() => setFormOpen(true)} className="btn-premium !h-9 !px-4 !text-[9px]">
+            <Plus className="h-3 w-3" /> Create Quiz
+          </button>
+        </div>
       </div>
+
+
 
       {/* Create Form Modal */}
       {formOpen && (
@@ -192,3 +202,4 @@ export default function TeacherQuizzesPage() {
     </div>
   );
 }
+

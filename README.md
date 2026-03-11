@@ -22,6 +22,10 @@ This platform aims to digitize the entire academic workflow: managing institutio
 - **Database Engine**: [PostgreSQL](https://www.postgresql.org/) (`pg`) - Relational data integrity for complex academic hierarchies.
 - **ORM**: [Drizzle ORM](https://orm.drizzle.team/) - A lightweight, type-safe TypeScript ORM that perfectly balances raw SQL access with high-level abstraction.
 
+### AI Integration
+
+- **LLM Engine**: [Google Gemini](https://deepmind.google/technologies/gemini/) (`@google/generative-ai`) - Powers complex multimodal tasks including parsing syllabus PDFs into massive academic hierarchies and generating context-aware assessments dynamically.
+
 ### Authentication & Security
 
 - **Auth Provider**: [Better Auth](https://better-auth.com/) (`better-auth`) - A modern, secure authentication system integrated directly into the database schema supporting sessions, OAuth, and RBAC mapping.
@@ -42,6 +46,7 @@ The platform is built to handle complex, real-world educational structures. Admi
 - **Batches & Semesters**: Tracking student admission cohorts through their 4-year (8 semester) journeys.
 - **Courses**: Subject templates mapped to specific semesters.
 - **Course Outcomes (COs)**: Granular learning objectives attached to courses for targeted outcome tracking.
+- **✨ AI-Powered Setup**: Administrators can upload raw syllabus PDFs and let the Gemini-powered parsing engine automatically extract and build the entire hierarchy (Departments, Programs, Courses, Units, Topics, and Outcomes) in seconds.
 
 ### 2. User Roles & Allocation Mapping
 
@@ -60,6 +65,7 @@ A powerful, secure quiz delivery system built for educators and students.
 #### Teacher Capabilities:
 
 - **Quiz Creation**: Define titles, descriptions, allowed duration, and max attempts. Maintain quizzes in "draft" or "published" states.
+- **✨ AI Quiz Generation**: Automatically generate context-aware MCQs with varying difficulties mapped directly to Course Outcomes from uploaded PDFs or course materials via Gemini.
 - **Question Bank**: Build MCQs mapped to specific Course Outcomes (COs). Assign difficulty levels (easy, medium, hard) and dynamic max marks. Questions and options can be edited dynamically before quiz publishing.
 - **Live Analytics**: View real-time aggregated stats of student performance, pass/fail ratios, and average scores per quiz.
 
@@ -102,7 +108,8 @@ The platform features an intelligent engine (`lib/adaptive/analytics-engine.ts`)
   - `>= 90%`: Mastered
 - **Student Insights**: Students receive personalized dashboards highlighting their weak COs and offering tailored recommendations (e.g., "Focus on CO2: Binary Trees").
 - **Teacher Analytics**: Educators can view a cohort-wide matrix breaking down how many students are "Weak" vs "Mastered" for specific Course Outcomes, enabling data-driven reteaching.
-- **At-Risk Identification**: Students averaging below 40% mastery across a course are flagged automatically for early intervention.
+- **Dynamic Question Difficulty**: The engine dynamically adjusts the difficulty of presented questions based on the student's real-time performance and calculated mastery of the underlying Course Outcome to maintain the optimal challenge level.
+- **At-Risk Identification**: Students averaging below 40% mastery across a course are flagged automatically for early intervention based on their computed Risk Score.
 
 ---
 

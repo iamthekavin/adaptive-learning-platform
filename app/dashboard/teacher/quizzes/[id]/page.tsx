@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, Loader2, Trash2, CheckCircle, Edit2 } from "lucide-react";
+import { ArrowLeft, Plus, Loader2, Trash2, CheckCircle, Edit2, Brain, Upload } from "lucide-react";
+import { AiGenerateModal } from "@/components/teacher/ai-generate-modal";
+import { AiUploadModal } from "@/components/teacher/ai-upload-modal";
 
 interface Option { id: string; text: string; isCorrect: boolean; orderIndex: number; }
 interface Question { id: string; text: string; marks: number; difficulty: string; orderIndex: number; options: Option[]; }
@@ -19,6 +21,9 @@ export default function QuizDetailPage() {
   const [form, setForm] = useState({ text: "", marks: 1, difficulty: "medium", courseOutcomeId: "", options: [{ text: "", isCorrect: false }, { text: "", isCorrect: false }] });
 
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
+
+  const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
+  const [aiUploadOpen, setAiUploadOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -122,10 +127,18 @@ export default function QuizDetailPage() {
 
       <div className="mb-6 flex items-center justify-between">
         <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-white/20">Questions ({questions.length})</h3>
-        {isDraft && (
-          <button onClick={() => openForm()} className="btn-premium !h-9 !px-4 !text-[9px]">
-            <Plus className="h-3 w-3" /> Add Question
-          </button>
+        {isDraft && quiz && (
+          <div className="flex items-center gap-3">
+            <button onClick={() => setAiGenerateOpen(true)} className="btn-premium !bg-indigo-500/10 !text-indigo-400 !border-indigo-500/20 hover:!bg-indigo-500/20 !h-9 !px-4 !text-[9px]">
+              <Brain className="h-3 w-3 mr-1.5" /> Generate with AI
+            </button>
+            <button onClick={() => setAiUploadOpen(true)} className="btn-premium !bg-emerald-500/10 !text-emerald-400 !border-emerald-500/20 hover:!bg-emerald-500/20 !h-9 !px-4 !text-[9px]">
+              <Upload className="h-3 w-3 mr-1.5" /> Upload Paper
+            </button>
+            <button onClick={() => openForm()} className="btn-premium !h-9 !px-4 !text-[9px]">
+              <Plus className="h-3 w-3" /> Add Question
+            </button>
+          </div>
         )}
       </div>
 
@@ -219,6 +232,24 @@ export default function QuizDetailPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {quiz && (
+        <>
+          <AiGenerateModal
+            quizId={quiz.id}
+            courseId={quiz.courseId}
+            isOpen={aiGenerateOpen}
+            onClose={() => setAiGenerateOpen(false)}
+            onSuccess={fetchData}
+          />
+          <AiUploadModal
+            quizId={quiz.id}
+            isOpen={aiUploadOpen}
+            onClose={() => setAiUploadOpen(false)}
+            onSuccess={fetchData}
+          />
+        </>
       )}
     </div>
   );

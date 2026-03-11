@@ -39,7 +39,7 @@ export function ResourceForm({
     } else {
       const defaults: Record<string, string | number> = {};
       fields.forEach((f) => {
-        defaults[f.name] = f.type === "number" ? 0 : "";
+        defaults[f.name] = "";
       });
       setValues(defaults);
     }

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 
 const navItems = [
+  { label: "AI Setup", href: "/dashboard/admin/ai-setup" },
   { label: "Universities", href: "/dashboard/admin/universities" },
   { label: "Institutions", href: "/dashboard/admin/institutions" },
   { label: "Departments", href: "/dashboard/admin/departments" },
@@ -46,16 +47,29 @@ export default async function AdminLayout({
         {/* Sidebar */}
         <nav className="hidden w-48 shrink-0 lg:block">
           <ul className="space-y-1">
-            {navItems.map((item) => (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className="block rounded px-3 py-2 text-xs font-bold uppercase tracking-widest text-white/40 transition-colors hover:bg-white/[0.04] hover:text-white"
-                >
-                  {item.label}
-                </Link>
-              </li>
-            ))}
+            {navItems.map((item) => {
+              const isAI = item.href === "/dashboard/admin/ai-setup";
+              return (
+                <li key={item.href} className={isAI ? "mb-4" : ""}>
+                  <Link
+                    href={item.href}
+                    className={
+                      isAI
+                        ? "flex items-center gap-2 rounded border border-indigo-500/20 bg-gradient-to-r from-indigo-500/10 to-emerald-500/10 px-3 py-2 text-[11px] font-black uppercase tracking-[0.2em] text-indigo-300 transition-all hover:scale-[1.02] hover:border-indigo-500/40 hover:from-indigo-500/20 hover:to-emerald-500/20 hover:shadow-[0_0_20px_rgba(99,102,241,0.2)]"
+                        : "block rounded px-3 py-2 text-xs font-bold uppercase tracking-widest text-white/40 transition-colors hover:bg-white/[0.04] hover:text-white"
+                    }
+                  >
+                    {isAI && (
+                      <span className="relative flex h-1.5 w-1.5 shrink-0">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                      </span>
+                    )}
+                    {item.label}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </nav>
 

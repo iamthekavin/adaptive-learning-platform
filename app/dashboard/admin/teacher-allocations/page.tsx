@@ -15,26 +15,30 @@ interface TeacherAllocation {
 interface TeacherUser { id: string; name: string; email: string; }
 interface SemesterCourseMap { id: string; semesterId: string; courseId: string; programId: string; }
 interface Course { id: string; name: string; code: string; }
+interface Program { id: string; name: string; code: string; }
 
 export default function TeacherAllocationsPage() {
   const [data, setData] = useState<TeacherAllocation[]>([]);
   const [teachers, setTeachers] = useState<TeacherUser[]>([]);
   const [maps, setMaps] = useState<SemesterCourseMap[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [programs, setPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<TeacherAllocation | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const [allocRes, mapRes, courseRes] = await Promise.all([
+    const [allocRes, mapRes, courseRes, progRes] = await Promise.all([
       fetch("/api/admin/teacher-allocations"),
       fetch("/api/admin/semester-course-maps"),
       fetch("/api/admin/courses"),
+      fetch("/api/admin/programs"),
     ]);
     if (allocRes.ok) setData(await allocRes.json());
     if (mapRes.ok) setMaps(await mapRes.json());
     if (courseRes.ok) setCourses(await courseRes.json());
+    if (progRes.ok) setPrograms(await progRes.json());
 
     // Fetch teachers (users with role=teacher) via better-auth admin API
     try {
@@ -51,7 +55,12 @@ export default function TeacherAllocationsPage() {
     const m = maps.find((x) => x.id === mapId);
     if (!m) return mapId;
     const c = courses.find((x) => x.id === m.courseId);
-    return c ? `${c.name} (${c.code})` : mapId;
+    const p = programs.find((x) => x.id === m.programId);
+    
+    if (!c) return mapId;
+    
+    const programCode = p ? p.code : "Unknown Program";
+    return `${c.name} (${c.code}) - ${programCode}`;
   };
 
   const columns = [
