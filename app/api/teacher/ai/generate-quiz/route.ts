@@ -4,10 +4,9 @@ import { quiz, question, option } from "@/lib/db/schema/assessment";
 import { courseOutcome } from "@/lib/db/schema/course";
 import { teacherGuard } from "@/lib/teacher/auth-guard";
 import { eq } from "drizzle-orm";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Groq from "groq-sdk";
 
-const apiKey = process.env.GEMINI_API_KEY;
-const genAI = new GoogleGenerativeAI(apiKey || "");
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 export async function POST(req: Request) {
   try {
@@ -35,65 +34,71 @@ export async function POST(req: Request) {
       where: eq(courseOutcome.courseId, quizData.courseId),
     });
 
-    // 3. Prepare the Gemini Prompt
-    const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
-
+    // 3. Prepare the prompt
     const coString = outcomes.length > 0 
       ? outcomes.map(co => `ID: ${co.id} | Code: ${co.code} | Desc: ${co.description}`).join('\n')
       : "No Course Outcomes available.";
 
-    const prompt = `
-      You are an expert academic evaluator. Generate ${count} multiple-choice questions based on the following topics:
-      Topics: ${topicNames.join(", ")}
-      
-      The overall requested difficulty is: ${difficulty || "medium"}. 
-      (If "mixed", provide a balance of easy, medium, and hard questions).
-      
-      For each question, you MUST map it to one of the following Course Outcomes (COs) if they exist. Use the ID provided:
-      ${coString}
-      
-      Return strictly a valid JSON array of question objects with the following structure:
-      [
-        {
-          "text": "The actual question text",
-          "marks": 1,
-          "difficulty": "easy" | "medium" | "hard",
-          "courseOutcomeId": "The ID of the best matching CO from the list above, or null if none fit",
-          "options": [
-            { "text": "Option A text", "isCorrect": true },
-            { "text": "Option B text", "isCorrect": false },
-            { "text": "Option C text", "isCorrect": false },
-            { "text": "Option D text", "isCorrect": false }
-          ]
-        }
-      ]
-      
-      Ensure exactly ONE option is isCorrect: true. Do not include markdown \`\`\`json block wrappers, just the raw JSON text.
-    `;
+    const prompt = `You are an expert academic evaluator. Generate ${count} multiple-choice questions based on the following topics:
+Topics: ${topicNames.join(", ")}
 
-    // 4. Call Gemini
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
-    
-    // Clean up Markdown formatting from Gemini's response if present
-    let cleanJsonString = responseText;
-    console.log("----- RAW GEMINI RESPONSE -----");
-    console.log(cleanJsonString);
-    console.log("-------------------------------");
-    
-    const startIndex = cleanJsonString.indexOf('[');
-    const endIndex = cleanJsonString.lastIndexOf(']');
-    
-    if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
-      cleanJsonString = cleanJsonString.substring(startIndex, endIndex + 1);
-    } else {
-      throw new Error("Invalid AI format returned: " + responseText.substring(0, 500));
+The overall requested difficulty is: ${difficulty || "medium"}. 
+(If "mixed", provide a balance of easy, medium, and hard questions).
+
+For each question, you MUST map it to one of the following Course Outcomes (COs) if they exist. Use the ID provided:
+${coString}
+
+Return a valid JSON object with a "questions" key containing an array of question objects:
+{
+  "questions": [
+    {
+      "text": "The actual question text",
+      "marks": 1,
+      "difficulty": "easy" | "medium" | "hard",
+      "courseOutcomeId": "The ID of the best matching CO from the list above, or null if none fit",
+      "options": [
+        { "text": "Option A text", "isCorrect": true },
+        { "text": "Option B text", "isCorrect": false },
+        { "text": "Option C text", "isCorrect": false },
+        { "text": "Option D text", "isCorrect": false }
+      ]
     }
-      
-    const aiQuestions = JSON.parse(cleanJsonString);
+  ]
+}
+
+Ensure exactly ONE option has isCorrect: true per question.`;
+
+    // 4. Call Groq API
+    const chatCompletion = await groq.chat.completions.create({
+      messages: [{ role: "user", content: prompt }],
+      model: "llama-3.3-70b-versatile",
+      response_format: { type: "json_object" },
+      temperature: 0.7,
+    });
+
+    const responseText = chatCompletion.choices[0]?.message?.content || "";
+    
+    console.log("----- RAW GROQ RESPONSE -----");
+    console.log(responseText);
+    console.log("-----------------------------");
+    
+    let aiQuestions: any[];
+    try {
+      const parsed = JSON.parse(responseText);
+      if (Array.isArray(parsed)) {
+        aiQuestions = parsed;
+      } else if (parsed && Array.isArray(parsed.questions)) {
+        aiQuestions = parsed.questions;
+      } else {
+        throw new Error("Unexpected JSON structure");
+      }
+    } catch (parseErr: any) {
+      console.error("JSON parse failed:", parseErr.message, "Response:", responseText.substring(0, 500));
+      throw new Error("AI returned an invalid response format. Please try again.");
+    }
 
     if (!Array.isArray(aiQuestions) || aiQuestions.length === 0) {
-      throw new Error("AI returned invalid question format.");
+      throw new Error("AI returned no questions. Please try again.");
     }
 
     // 5. Insert into Database in a Transaction

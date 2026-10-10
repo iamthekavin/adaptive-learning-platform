@@ -1,282 +1,306 @@
-# Adaptive Learning Platform (ALP)
+<p align="center">
+  <img src="https://img.shields.io/badge/Next.js-16.1-black?style=for-the-badge&logo=next.js" alt="Next.js" />
+  <img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=white" alt="React" />
+  <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/Drizzle_ORM-0.45-C5F74F?style=for-the-badge&logo=drizzle&logoColor=black" alt="Drizzle" />
+  <img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="Tailwind" />
+</p>
 
-An enterprise-grade, highly scalable Learning Management System (LMS) and Adaptive Learning Platform designed to manage everything from top-level academic hierarchies (Universities) down to granular student interactions (Proctored Assessments and Adaptive Analytics).
+<h1 align="center">Adaptive Learning Platform</h1>
 
-This platform aims to digitize the entire academic workflow: managing institutional structures, tracking teacher and student enrollments across semesters, delivering rigorous, anti-cheat enabled assessments, and providing insightful analytics for educators and administrators.
+<p align="center">
+  <strong>An AI-powered, anti-cheat enabled Learning Management System with adaptive analytics</strong>
+</p>
 
----
-
-## 🚀 Technology Stack
-
-### Frontend & Core Framework
-
-- **Framework**: [Next.js 16 (App Router)](https://nextjs.org/) - Utilizing the latest React Server Components (RSC) and Server Actions for optimized performance and SEO.
-- **UI Library**: [React 19](https://react.dev/)
-- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) & `class-variance-authority` (CVA) - For a highly flexible, utility-first, modern UI design featuring Glassmorphism and dark mode as the default aesthetic.
-- **Components**: Radix UI primitives and Lucide React (for crisp, consistent iconography).
-- **Forms & Validation**: `react-hook-form` coupled tightly with `zod` for strict, type-safe client and server payload validation.
-- **Notifications**: `sonner` for beautiful, responsive toast notifications.
-
-### Backend & Database
-
-- **Database Engine**: [PostgreSQL](https://www.postgresql.org/) (`pg`) - Relational data integrity for complex academic hierarchies.
-- **ORM**: [Drizzle ORM](https://orm.drizzle.team/) - A lightweight, type-safe TypeScript ORM that perfectly balances raw SQL access with high-level abstraction.
-
-### AI Integration
-
-- **LLM Engine**: [Google Gemini](https://deepmind.google/technologies/gemini/) (`@google/generative-ai`) - Powers complex multimodal tasks including parsing syllabus PDFs into massive academic hierarchies and generating context-aware assessments dynamically.
-
-### Authentication & Security
-
-- **Auth Provider**: [Better Auth](https://better-auth.com/) (`better-auth`) - A modern, secure authentication system integrated directly into the database schema supporting sessions, OAuth, and RBAC mapping.
-- **Role-Based Access Control (RBAC)**: Enforced via custom middleware and API route guards (`adminGuard`, `teacherGuard`, `studentGuard`).
+<p align="center">
+  <em>Built for institutions that need rigorous assessment integrity, real-time mastery tracking, and intelligent course outcome analytics — all in one platform.</em>
+</p>
 
 ---
 
-## 🌟 Core Modules & Features
+## Overview
 
-### 1. Multi-Tenant Academic Hierarchy (Admin Module)
+The **Adaptive Learning Platform (ALP)** is a full-stack LMS designed to manage the complete academic lifecycle — from institutional hierarchies and syllabus ingestion to proctored assessments with real-time fraud detection and adaptive learning analytics.
 
-The platform is built to handle complex, real-world educational structures. Administrators have full CRUD controls over this hierarchy:
+### What makes it different?
 
-- **Universities**: The top-level entity.
-- **Institutions**: Colleges attached to Universities (e.g., Engineering, Arts, Pharmacy).
-- **Departments**: Branches within Institutions (e.g., CSE, Mechanical).
-- **Programs & Regulations**: Degree paths (e.g., B.Tech) and their specific syllabus regulations (e.g., R2020) spanning defined years.
-- **Batches & Semesters**: Tracking student admission cohorts through their 4-year (8 semester) journeys.
-- **Courses**: Subject templates mapped to specific semesters.
-- **Course Outcomes (COs)**: Granular learning objectives attached to courses for targeted outcome tracking.
-- **✨ AI-Powered Setup**: Administrators can upload raw syllabus PDFs and let the Gemini-powered parsing engine automatically extract and build the entire hierarchy (Departments, Programs, Courses, Units, Topics, and Outcomes) in seconds.
-
-### 2. User Roles & Allocation Mapping
-
-- **Administrators (`admin`)**: Manage the entire academic hierarchy via dedicated dashboard panels.
-- **Teachers (`teacher`)**:
-  - Admins allocate teachers to specific `Semester Course Maps` (e.g., "Data Structures" in "Semester 3").
-  - Teachers get automatic access to the cohorts of students enrolled in that specific combination.
-- **Students (`student`)**:
-  - **Onboarding Flow**: Upon first login, students must complete an onboarding flow to map themselves to a specific Program, Batch, and Roll Number, placing them in their correct academic context.
-  - Students progress automatically through courses mapped to their current semester.
-
-### 3. Assessment & Proctored Quiz Engine
-
-A powerful, secure quiz delivery system built for educators and students.
-
-#### Teacher Capabilities:
-
-- **Quiz Creation**: Define titles, descriptions, allowed duration, and max attempts. Maintain quizzes in "draft" or "published" states.
-- **✨ AI Quiz Generation**: Automatically generate context-aware MCQs with varying difficulties mapped directly to Course Outcomes from uploaded PDFs or course materials via Gemini.
-- **Question Bank**: Build MCQs mapped to specific Course Outcomes (COs). Assign difficulty levels (easy, medium, hard) and dynamic max marks. Questions and options can be edited dynamically before quiz publishing.
-- **Live Analytics**: View real-time aggregated stats of student performance, pass/fail ratios, and average scores per quiz.
-
-#### Student Experience (Anti-Cheat / Proctoring):
-
-- **Server-Synchronized Timers**: The countdown timer relies entirely on Postgres `CURRENT_TIMESTAMP - started_at` calculations. This makes it **impossible** for a student to tamper with the duration by altering their local machine clock or timezone settings.
-- **Tab-Switch Detection**: Monitors document `visibilitychange`. If a student switches tabs or minimizes the browser, a `proctor_event` is logged directly to their active `quiz_session`, incrementing their **Risk Score**.
-- **Copy/Paste & Right-Click Prevention**: Active event listeners block right-clicks (`contextmenu`) and text copying, logging these attempts as infractions.
-- **Randomized Question Delivery**: Questions and their multiple-choice options are dynamically shuffled server-side before hitting the client, ensuring no two students see the exact same layout.
-
-### 4. Advanced Edge Case Handling (Quiz Resiliency)
-
-The quiz engine is highly fault-tolerant and gracefully handles complex, real-world edge cases through atomic database transactions and strict data integrity constraints:
-
-- **1. Network Disconnects & Mid-Quiz Logouts (Autosave)**:
-  - **Mechanic**: The frontend features an `isOffline` network detector. As students select answers, they are asynchronously pushed to a dedicated `/autosave` API.
-  - **Offline Syncing**: If the internet drops, answers are intelligently queued in memory. Once connectivity is restored, the queue flushes sequentially to the server.
-  - **Resume Capability**: If a student accidentally closes the browser or logs out, the `/start` API fetches the associated `in_progress` session _and_ their successfully autosaved choices, pre-filling the UI so they simply resume without losing progress.
-- **2. Duplicate Session Prevention**:
-  - **Mechanic**: A partial, composite unique constraint (`unq_in_progress_session`) at the PostgreSQL level specifically guards `(user_id, quiz_id) WHERE status = 'in_progress'`.
-  - **Benefit**: This acts as a hard lock. No amount of rapid double-clicking or network manipulation can ever trick the system into spawning two simultaneous attempts for the same user on a given quiz.
-- **3. Simultaneous Auto-Grading Safeguard**:
-  - **Mechanic**: The final `/submit` API performs an atomic boolean check when updating the database (`WHERE id = sessionId AND status = 'in_progress'`).
-  - **Benefit**: If a throttled network causes two duplicate submit requests to arrive at the server simultaneously, the first request flips the status to `submitted`. The trailing request fails the row-match instantly, completely eliminating double-grading bugs, duplicate score entries, or corrupting aggregate analytics.
-- **4. Mid-Decision Quiz Deletions**:
-  - **Mechanic**: If a teacher intentionally deletes a quiz while a cohort is currently testing, the student's background pings and final `Submit` POST request will safely capture the `404 Not Found` response.
-  - **Benefit**: Instead of crashing the frontend client or throwing uncaught React errors, the UI intercepts this 404 code and halts the timer, elegantly notifying the student: _"This quiz was deleted by the instructor. Your attempt has been canceled."_
-- **5. Semester & Timeline Advancements**:
-  - **Mechanic**: The core submission engine and `studentGuard` middleware strictly authenticate based on the cryptographically secure `session.id` established at the time the quiz began.
-  - **Benefit**: If an Administrator triggers a mass batch progression (moving students from Semester 3 to 4) exactly while a student is testing, the submission does not corrupt. The active quiz token retains its context and successfully records the grade on submission.
-
-### 4. Adaptive Analytics Engine (Adaptive Engine)
-
-The platform features an intelligent engine (`lib/adaptive/analytics-engine.ts`) to track long-term student mastery across syllabus requirements.
-
-- **Course Outcome (CO) Mastery Tracking**: Every time a student answers a question, the engine recalibrates their mastery percentage for the associated CO. Based on standard grading curves, it categorizes mastery as:
-  - `< 40%`: Weak
-  - `40 - 69%`: Developing
-  - `70 - 89%`: Proficient
-  - `>= 90%`: Mastered
-- **Student Insights**: Students receive personalized dashboards highlighting their weak COs and offering tailored recommendations (e.g., "Focus on CO2: Binary Trees").
-- **Teacher Analytics**: Educators can view a cohort-wide matrix breaking down how many students are "Weak" vs "Mastered" for specific Course Outcomes, enabling data-driven reteaching.
-- **Dynamic Question Difficulty**: The engine dynamically adjusts the difficulty of presented questions based on the student's real-time performance and calculated mastery of the underlying Course Outcome to maintain the optimal challenge level.
-- **At-Risk Identification**: Students averaging below 40% mastery across a course are flagged automatically for early intervention based on their computed Risk Score.
+| Capability | Description |
+|---|---|
+| **AI-Powered Setup** | Upload a raw syllabus PDF → AI extracts departments, programs, courses, units, topics, and outcomes automatically |
+| **Anti-Cheat Engine** | Server-synced timers, tab-switch detection, copy/paste prevention, and randomized question delivery |
+| **Adaptive Analytics** | Real-time Course Outcome mastery tracking with dynamic difficulty adjustment |
+| **Fault-Tolerant Quizzes** | Handles network drops, duplicate submissions, mid-quiz deletions, and semester rollovers gracefully |
+| **Role-Based Architecture** | Three distinct dashboards for Admins, Teachers, and Students with strict API-level isolation |
 
 ---
 
-## 🗄️ Database Schema Details (Drizzle ERD)
+## Tech Stack
 
-The database is split across four primary files for modular maintainability (`lib/db/schema/`):
-
-### `auth.ts` (Better Auth integration)
-
-- `user`, `session`, `account`, `verification`
-- Custom user fields: `role` (enum: 'admin', 'teacher', 'student'), `name`, `email`, `avatarUrl`.
-
-### `core.ts` (Academic Hierarchy)
-
-- `university`, `institution`, `department`, `program`, `regulation`, `batch`
-- `course`, `course_outcome`, `academic_year`, `semester`, `semester_course_map`
-- **Junctions**:
-  - `teacher_allocation` (Maps Teacher -> SemesterCourseMap)
-  - `student_enrollment` (Maps Student -> Batch & tracks current semester)
-
-### `assessment.ts` (Quizzes & Logs)
-
-- `quiz`, `question`, `option`
-- **Engagement**:
-  - `quiz_session`: Tracks start/submit times, final scores, and active `risk_score`.
-  - `student_answer`: Granular tracking of what a student answered, cross-referenced with `option.isCorrect` and `time_taken_seconds` per question.
-  - `proctor_event`: A log table tracking the exact timestamp and `event_type` (e.g., 'tab_switch') of infractions.
-
-### `adaptive.ts` (Analytics)
-
-- `co_mastery`: Aggregates and materializes a student's calculated proficiency on specific Course Outcomes over time, minimizing heavy runtime queries.
+| Layer | Technology | Version |
+|---|---|---|
+| **Framework** | Next.js (App Router, RSC, Turbopack) | 16.1.6 |
+| **UI** | React | 19.2.3 |
+| **Styling** | Tailwind CSS | 4.x |
+| **Database** | PostgreSQL + Drizzle ORM | 0.45.1 |
+| **Auth** | Better Auth (Sessions, RBAC) | 1.4.18 |
+| **AI (Quiz Gen)** | Groq SDK (Llama 3.3 70B) | 1.1.1 |
+| **AI (Syllabus)** | Google Gemini | 0.24.1 |
+| **Validation** | Zod | 4.3.6 |
+| **Forms** | React Hook Form | 7.71.1 |
+| **Icons** | Lucide React | 0.575.0 |
 
 ---
 
-## 📂 Internal Directory Structure
+## Architecture
 
-```text
+```
 adaptive-learning-platform/
+│
 ├── app/
-│   ├── (auth)/             # Login/Signup pages & logic
-│   ├── onboarding/         # Mandatory first-time user setup for students
-│   ├── api/                # Next.js Route Handlers
-│   │   ├── admin/          # Strictly protected admin endpoints
-│   │   ├── auth/[...all]/  # BetterAuth catch-all routes
-│   │   ├── student/        # Endpoints returning student specific/filtered data
-│   │   └── teacher/        # Course management, quiz CRUDS, analytics APIs
-│   └── dashboard/          # Next.js Pages (UI)
-│       ├── admin/          # Admin UI (Hierarchy CRUD tables, user allocation)
-│       ├── student/        # Student UI (My Courses, Quiz Taking Engine, Results, Insights)
-│       └── teacher/        # Teacher UI (Quiz Builder, Analytics Dashboards)
-├── components/             # Reusable UI React Components
-│   ├── ui/                 # Base elements (Buttons, Inputs, Modals, Cards)
-│   └── (feature specific)  # e.g., complex forms, analytics charts
+│   ├── (auth)/                  # Sign-in / Sign-up flows
+│   ├── onboarding/              # Student first-login enrollment
+│   ├── api/
+│   │   ├── admin/               # 15+ admin CRUD endpoints
+│   │   │   ├── universities/    # Institution hierarchy management
+│   │   │   ├── ai-setup/        # Syllabus PDF → structured data pipeline
+│   │   │   ├── teacher-allocations/
+│   │   │   └── student-enrollments/
+│   │   ├── teacher/
+│   │   │   ├── ai/generate-quiz/  # AI-powered MCQ generation (Groq)
+│   │   │   ├── ai/upload-paper/   # PDF question extraction
+│   │   │   └── quizzes/           # Quiz CRUD & analytics
+│   │   ├── student/
+│   │   │   ├── quiz/start/        # Session creation with anti-cheat
+│   │   │   ├── quiz/submit/       # Atomic grading with race protection
+│   │   │   └── quiz/autosave/     # Offline-resilient answer persistence
+│   │   └── auth/[...all]/         # Better Auth catch-all
+│   └── dashboard/
+│       ├── admin/                 # Hierarchy CRUD, user allocation panels
+│       ├── teacher/               # Quiz builder, analytics dashboards
+│       ├── student/               # Courses, quiz engine, results, insights
+│       └── profile/               # Universal profile page (all roles)
+│
+├── components/
+│   ├── ui/                        # Base design system (buttons, modals, cards)
+│   └── teacher/                   # AI generation modals, quiz builders
+│
 ├── lib/
-│   ├── admin/              # Zod schemas used to validate incoming admin API POST/PUT data
-│   ├── db/                 # Drizzle schemas, config, and db connection instance
-│   ├── adaptive/           # The Analytics Engine for processing Mastery/Risk points
-│   ├── student/            # Student API utilities and the `studentGuard()` auth middleware
-│   └── teacher/            # Teacher API utilities and the `teacherGuard()` auth middleware
-└── package.json            # Scripts & project dependencies
+│   ├── db/schema/
+│   │   ├── auth.ts                # User, Session, Account tables
+│   │   ├── core.ts                # Full academic hierarchy (12+ tables)
+│   │   ├── assessment.ts          # Quiz, Question, Option, Session, Proctor
+│   │   └── adaptive.ts            # CO Mastery aggregation table
+│   ├── adaptive/
+│   │   └── analytics-engine.ts    # Mastery computation & risk scoring
+│   ├── ai/
+│   │   └── gemini.ts              # Syllabus PDF parsing via Gemini
+│   ├── admin/                     # Zod validation schemas
+│   ├── teacher/                   # teacherGuard() middleware
+│   └── student/                   # studentGuard() middleware
+│
+└── package.json
 ```
 
 ---
 
-## 🔐 Security Context & Best Practices Applied
+## Core Modules
 
-1. **API Route Protection**:
-   Every `/api/*` endpoint begins with a rigorous check (`adminGuard()`, `teacherGuard()`, or `studentGuard()`). These guards not only confirm the session is valid but assert the role string matches exactly.
-2. **Data Isolation (Tenant Scoping)**:
-   In the REST endpoints, queries unconditionally map `userId` context. E.g., a teacher requesting quizzes (`SELECT * FROM quiz`) implicitly passes `WHERE createdBy = session.user.id`. A user can never access objects belonging to another tenant/user.
-3. **Optimized Zod Validations**:
-   All programmatic updates utilize `z.object().partial()` without blindly applying default values. This ensures `PATCH/PUT` endpoints modifying status flags (like Publishing a quiz) do not accidentally revert existing parameters back to factory defaults.
+### 1. Academic Hierarchy Management
+
+Administrators manage a deeply nested institutional structure:
+
+```
+University → Institution → Department → Program → Regulation
+                                          ↓
+                              Batch → Semester → Course → Course Outcome
+                                                   ↓
+                                              Unit → Topic
+```
+
+- Full CRUD for every level with cascading relationships
+- **AI Syllabus Import**: Upload a PDF → Gemini extracts the entire hierarchy automatically
+- Semester-course mapping with teacher allocation and student enrollment
+
+### 2. Assessment Engine
+
+#### Teacher Side
+- Create quizzes with configurable duration, max attempts, and draft/publish states
+- **AI Question Generation**: Select topics → Groq generates difficulty-tagged MCQs mapped to Course Outcomes
+- **PDF Upload**: Extract questions from existing question papers via AI
+- Real-time analytics: pass/fail ratios, average scores, per-question breakdown
+
+#### Student Side — Anti-Cheat Proctoring
+| Protection | Implementation |
+|---|---|
+| **Tamper-proof timer** | Server-calculated via `CURRENT_TIMESTAMP - started_at` in PostgreSQL |
+| **Tab-switch detection** | `visibilitychange` events logged as proctor infractions |
+| **Copy/paste blocking** | `contextmenu` and clipboard events intercepted and logged |
+| **Question randomization** | Questions and options shuffled server-side per student |
+| **Risk scoring** | Infractions accumulate into a computed risk score per session |
+
+### 3. Quiz Fault Tolerance
+
+The quiz engine handles real-world edge cases through atomic transactions:
+
+| Edge Case | How It's Handled |
+|---|---|
+| **Network disconnect** | Answers queued in memory → auto-synced on reconnect via `/autosave` |
+| **Browser crash** | Resume from `in_progress` session with pre-filled saved answers |
+| **Double submission** | Atomic `WHERE status = 'in_progress'` check — only first request grades |
+| **Duplicate sessions** | PostgreSQL partial unique constraint prevents concurrent attempts |
+| **Quiz deleted mid-test** | 404 caught gracefully → student notified, timer halted |
+| **Semester rollover** | Session token retains original context, submission completes safely |
+
+### 4. Adaptive Analytics Engine
+
+Tracks long-term student mastery across Course Outcomes:
+
+| Mastery Level | Threshold | Action |
+|---|---|---|
+| 🔴 **Weak** | < 40% | Flagged for intervention |
+| 🟡 **Developing** | 40–69% | Targeted recommendations |
+| 🟢 **Proficient** | 70–89% | On track |
+| 🔵 **Mastered** | ≥ 90% | Outcome achieved |
+
+**Key capabilities:**
+- Per-CO mastery recalculation on every quiz submission
+- Student insights dashboard with personalized weak-area recommendations
+- Teacher cohort analytics: mastery distribution matrix across COs
+- Dynamic question difficulty adjustment based on real-time performance
+- At-risk student identification via computed risk scores
 
 ---
 
-## 🛠️ Installation & Setup Guide
+## Database Schema
 
-### 1. Prerequisites
+Four modular schema files in `lib/db/schema/`:
 
-- **Node.js**: v20 or later.
-- **PostgreSQL**: A running local or remote (e.g., Supabase/Neon) Postgres instance.
+```mermaid
+erDiagram
+    USER ||--o{ SESSION : has
+    USER ||--o{ QUIZ_SESSION : takes
+    USER ||--o{ CO_MASTERY : tracks
 
-### 2. Environment Variables
+    UNIVERSITY ||--o{ INSTITUTION : contains
+    INSTITUTION ||--o{ DEPARTMENT : contains
+    DEPARTMENT ||--o{ PROGRAM : offers
+    PROGRAM ||--o{ REGULATION : governs
+    REGULATION ||--o{ BATCH : enrolls
 
-Create a `.env.local` file at the root of the project:
+    COURSE ||--o{ COURSE_OUTCOME : defines
+    COURSE ||--o{ QUIZ : assessed_by
 
-```env
-# Your postgres connection string
-DATABASE_URL="postgresql://username:password@localhost:5432/adaptive_db"
+    QUIZ ||--o{ QUESTION : contains
+    QUESTION ||--o{ OPTION : has
+    QUIZ ||--o{ QUIZ_SESSION : generates
 
-# Better Auth required keys
-BETTER_AUTH_SECRET="generate-a-random-32-char-string-here"
-BETTER_AUTH_URL="http://localhost:3000"
-
-# Optional: Disable Next.js telemetry
-NEXT_TELEMETRY_DISABLED=1
+    QUIZ_SESSION ||--o{ STUDENT_ANSWER : records
+    QUIZ_SESSION ||--o{ PROCTOR_EVENT : logs
 ```
 
-### 3. Installation
+| Schema File | Tables | Purpose |
+|---|---|---|
+| `auth.ts` | user, session, account, verification | Authentication & RBAC |
+| `core.ts` | university, institution, department, program, regulation, batch, course, course_outcome, semester, semester_course_map, teacher_allocation, student_enrollment | Academic hierarchy |
+| `assessment.ts` | quiz, question, option, quiz_session, student_answer, proctor_event | Assessments & proctoring |
+| `adaptive.ts` | co_mastery | Mastery tracking & analytics |
 
-Install the project dependencies via npm:
+---
+
+## Security
+
+| Layer | Implementation |
+|---|---|
+| **API Protection** | Every endpoint guarded by `adminGuard()`, `teacherGuard()`, or `studentGuard()` — validates session + role |
+| **Data Isolation** | All queries scoped to `session.user.id` — users cannot access other tenants' data |
+| **Input Validation** | Zod schemas with `.partial()` on PATCH/PUT to prevent accidental field resets |
+| **Session Security** | Better Auth with secure cookie-based sessions, CSRF protection |
+| **Anti-Cheat Logging** | All proctor events stored with timestamps for post-assessment review |
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- **Node.js** ≥ 20
+- **PostgreSQL** (local or hosted — Supabase, Neon, etc.)
+
+### 1. Clone & Install
 
 ```bash
+git clone <repository-url>
+cd adaptive-learning-platform
 npm install
 ```
 
-### 4. Database Initialization
+### 2. Configure Environment
 
-Push the Drizzle Schema definitions directly to your PostgreSQL database to create the necessary tables, enums, and relations:
+Create `.env.local` at the project root:
+
+```env
+# Database
+DATABASE_URL="postgresql://user:password@localhost:5432/alp_db"
+
+# Authentication
+BETTER_AUTH_SECRET="your-random-32-char-secret"
+BETTER_AUTH_URL="http://localhost:3000"
+
+# AI - Quiz Generation (free, get key at console.groq.com)
+GROQ_API_KEY="your-groq-api-key"
+
+# AI - Syllabus Parsing (get key at aistudio.google.com)
+GEMINI_API_KEY="your-gemini-api-key"
+```
+
+### 3. Initialize Database
 
 ```bash
 npx drizzle-kit push
 ```
 
-_(Alternatively, you can run `npx drizzle-kit generate` and `npx drizzle-kit migrate` if maintaining a strict migration history)._
-
-### 5. Running the Deployment/Development Servers
-
-**Development Mode** (with Hot Module Reloading):
+### 4. Run
 
 ```bash
+# Development (with Turbopack HMR)
 npm run dev
+
+# Production
+npm run build && npm start
 ```
 
-Navigate to `http://localhost:3000`.
-_Pro-tip: The platform defaults the first registered user to a "student". You must manually adjust the `role` column in the `user` table in Postgres to `'admin'` or `'teacher'` to access those respective dashboards initially._
+Open [http://localhost:3000](http://localhost:3000).
 
-**Production Build**:
-To test the production optimized bundle locally:
-
-```bash
-npm run build
-npm run start
-```
+> **First user setup:** The first registered user defaults to `student` role. To access admin/teacher dashboards, manually update the `role` column in the `user` table to `'admin'` or `'teacher'`.
 
 ---
 
-## 🧪 Edge Case Verification Guide
+## Testing Edge Cases
 
-Administrators and developers can manually replicate and verify the fault tolerance of the application utilizing these testing schemas:
+### Autosave & Recovery
+1. Start a quiz → answer several questions (watch `/autosave` 200s in Network tab)
+2. Close the browser tab completely
+3. Reopen and restart the quiz → answers restored, timer continues from server timestamp
 
-### Autosave & Logout Recovery
+### Offline Resilience
+1. Start a quiz → open DevTools → Network → set to **Offline**
+2. Select 3+ answers → observe offline queue indicator
+3. Switch back to **No throttling** → watch answers sync automatically
 
-1. Start a quiz as a student.
-2. Click multiple answers and watch the network tab for background `/autosave` 200 OK responses.
-3. Completely close the browser tab or hit refresh.
-4. Restart the quiz. Ensure the timer strictly resumes based on the initial `started_at` postgres timestamp, and the previously clicked answers are loaded.
-
-### Network Drops (Offline Sync)
-
-1. Start a quiz.
-2. Under Chrome DevTools > Network tab, throttle speeds to **"Offline"**.
-3. Select 3 new answers. Observe the UI highlight the red `WifiOff` offline queueing warning.
-4. Return Network to **"No throttling"**.
-5. Observe the yellow `Syncing...` indicator flash quickly as the queue empties. Refresh the page safely knowing answers are preserved.
-
-### Database Lock / Simulate Simultaneous Submission
-
-1. Using Chrome DevTools, throttle the network to **"Slow 3G"**.
-2. Aggressively spam the "Submit Quiz" button rapidly 10+ times.
-3. Observe the network tab handling multiple queued POST requests, where ONLY the first returns a `200 Success` taking the grade, and all subsequent trailing requests instantly return explicit DB rejection errors preventing score duplication.
+### Race Condition Protection
+1. Start a quiz → DevTools → Network → **Slow 3G**
+2. Spam the Submit button 10+ times rapidly
+3. Only the first request returns `200 OK` — all duplicates rejected at DB level
 
 ---
 
-## 🎨 Modifying Themes & Aesthetics
+## Theming
 
-The platform uses Tailwind CSS variables injected via the `next-themes` provider in the `globals.css` file.
+The platform ships with a **dark-first glassmorphic design** using Tailwind CSS variables in `globals.css`. Global accent colors (indigo, emerald, red) can be customized by editing the CSS variables.
 
-- **Dark Mode Default**: The entire layout, including modals, dropdowns, and text, is optimized prioritizing a sleek, dark/glass visual aesthetic.
-- Global colors (backgrounds, borders, primary accent colors like "indigo", "emerald") can be globally shifted by editing `app/globals.css`.
+---
+
+<p align="center">
+  <sub>Built with Next.js 16, React 19, PostgreSQL, Drizzle ORM, Groq AI, and Google Gemini</sub>
+</p>
